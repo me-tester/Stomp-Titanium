@@ -3,36 +3,85 @@ var win = Ti.UI.currentWindow;
 var but = Ti.UI.createButton({
 	title : 'close',
 	top : 0,
-	left : 0
+	left : 0,
+	zIndex : 1
 });
 but.addEventListener('click', function() {
 	win.close();
 });
+//win.add(but);
 
-win.add(but);
 
-var but2 = Ti.UI.createButton({
-	title : 'send',
-	top : 0,
-	right : 0
+var scrollview = Ti.UI.createScrollView
+({
+	height : Ti.UI.FILL,
+	width : Ti.UI.FILL
 });
-but2.addEventListener('click', function() {
-	writeIt();
+win.add(scrollview);
+
+var tableView = Ti.UI.createTableView
+({
+	//top : "70dp",
+	bottom : "65dp",
+	left : "10dp",
+	right : "10dp"
 });
+scrollview.add(tableView);
 
-win.add(but2);
+var view = Ti.UI.createView
+({
+	height : "60dp",
+	width : Ti.UI.FILL,
+	bottom : "0dp"
+});
+scrollview.add(view);
 
-hostname = 'localhost';
-port = 61613;
-queue = "/topic/test";
-message = "valid";
-msg_connect = "CONNECT\nlogin:guest\npasscode:guest\n\n\x00";
-msg_send = "SEND\ndestination:"+queue+"\nreceipt:ok\n\n"+message+"\x00";
-msg_recv = "SUBSCRIBE\ndestination:"+queue+"\nid:substo_11\nack:client\n\n\x00";
-msg_disconnect = "DISCONNECT\n\n\x00";
+var mesg = Ti.UI.createTextField
+({
+	width : Ti.UI.FILL,
+	height : "40dp" ,
+	borderStyle: Ti.UI.INPUT_BORDERSTYLE_LINE,
+	borderWidth : 1,
+  	color: '#000',
+  	hintText : "Enter message",
+  	left : "10dp",
+  	right : "70dp",
+  	paddingLeft : "10dp"
+});
+view.add(mesg);
 
-function writeIt()
+var but2 = Ti.UI.createButton
+({
+	title : 'Send',
+	right : "10dp",
+	width : "50dp",
+	height : "40dp"	
+});
+but2.addEventListener('click', function() 
 {
+	if( mesg.value != null && mesg.value != "" && mesg.value.trim != "" )
+	{
+		writeIt( mesg.value );
+		mesg.value = "";
+	}
+});
+view.add(but2);
+
+var username = win.username;
+var hostname = '10.0.11.35';
+var port = 61613;
+var queue = "/topic/test";
+var message = "";
+var msg_connect = "CONNECT\nlogin:guest\npasscode:guest\n\n\x00";
+
+var msg_recv = "SUBSCRIBE\ndestination:"+queue+"\nid:substo_11\nack:client\n\n\x00";
+var msg_disconnect = "DISCONNECT\n\n\x00";
+
+function writeIt( mesg )
+{
+	message = username + " - " + mesg ;
+	msg_send = "SEND\ndestination:"+queue+"\n\n"+message+"\x00";
+	
 	Ti.Stream.write(socket, Ti.createBuffer
 	({
 		value: msg_send
@@ -65,6 +114,7 @@ function writeCallback(e)
 	Ti.API.info('Successfully wrote to socket.' + JSON.stringify(e));
 }
 
+var readData = {};
 function readCallback(e) 
 {
 	if (e.bytesProcessed == -1) 
@@ -78,7 +128,8 @@ function readCallback(e)
 			var received = e.buffer.toString();
 			Ti.API.info('Received: ' + received );
 			
-			parseItCustom(received);
+			readData = parseItCustom(received);
+			displayUi(readData);
 		} 
 		else 
 		{
@@ -95,6 +146,8 @@ function parseItCustom(data)
 {
 	if( data != null || data != "" )
 	{
+		data = data.replace("\u0000", "");
+		
 		var length = data.length;
 		var charData = null;
 		var type = '';
@@ -112,14 +165,14 @@ function parseItCustom(data)
 			}
 		}
 		
+		var obj = { };
+		obj.type = type;
 		
 		if( type.trim() === "MESSAGE" )
 		{
 			var key = "";
 			var value = "";
 			var valueFlag = false;
-			var obj = { };
-			obj.type = type;
 			
 			for( var i = ( type.length ) ; i < length ; i++ )
 			{
@@ -157,16 +210,29 @@ function parseItCustom(data)
 					{
 						key = key + charData;
 					}
-					
 				}
 			}
 			
-			var mesg = obj.message;
-			mesg = mesg.substr( 0 , obj["content-length"] );
+			var mesg = data.substr( length - obj["content-length"] , length );
 			obj.message = mesg;
-			
-			Ti.API.info("obj = " + JSON.stringify(obj));
 		}
+		
+		Ti.API.info("obj = " + JSON.stringify(obj));
+		return obj;
+	}
+}
+
+function displayUi(readData)
+{
+	if( readData.type === "MESSAGE" )
+	{
+		var row = Titanium.UI.createTableViewRow
+		({
+			title : readData.message,
+			font : { fontSize: "16dp", fontWeight : "medium" }
+		});
+		
+		tableView.appendRow(row , { animated :true , animationStyle : Titanium.UI.iPhone.RowAnimationStyle.FADE });
 	}
 }
 

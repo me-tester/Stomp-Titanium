@@ -36,9 +36,7 @@
         </splash>
         <theme>default</theme>
     </mobileweb>
-    <modules>
-        <module platform="iphone">net.iamyellow.tiws</module>
-    </modules>
+    <modules/>
     <deployment-targets>
         <target device="android">true</target>
         <target device="blackberry">false</target>
@@ -48,4 +46,5 @@
         <target device="tizen">false</target>
     </deployment-targets>
     <sdk-version>3.1.2.GA</sdk-version>
-<property name="ti.deploytype">development</property></ti:app>
+    <property name="ti.deploytype">test</property>
+</ti:app>
